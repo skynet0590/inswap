@@ -1,0 +1,14 @@
+{
+  "btc": {
+    "rpcserver": "",
+    "rpcuser": "",
+    "rpcpass": "",
+    "rpccert": ""
+  },
+  "dcr": {
+    "rpcserver": "",
+    "rpcuser": "",
+    "rpcpass": "",
+    "rpccert": ""
+  }
+}
