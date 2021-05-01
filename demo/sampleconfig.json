@@ -1,14 +1,21 @@
 {
   "btc": {
-    "rpcserver": "",
-    "rpcuser": "",
-    "rpcpass": "",
-    "rpccert": ""
+    "walletname": "default",
+    "fallbackfee": "0.001",
+    "rpcbind": "127.0.0.1",
+    "rpcport": "18332",
+    "rpcuser": "rpcuser",
+    "rpcpassword": "rpcpassword",
+    "txsplit": "0",
+    "walletpassphrase": "passphrase"
   },
   "dcr": {
-    "rpcserver": "",
-    "rpcuser": "",
-    "rpcpass": "",
-    "rpccert": ""
+    "account": "default",
+    "fallbackfee": "0.0002",
+    "rpclisten": "127.0.0.1:19110",
+    "username": "username",
+    "password": "password",
+    "rpccert": "path/to/dcrwallet/certfile",
+    "walletpassphrase": "passphrase"
   }
 }
