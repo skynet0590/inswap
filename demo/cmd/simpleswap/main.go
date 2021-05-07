@@ -2,16 +2,20 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"decred.org/dcrdex/client/asset"
 	_ "decred.org/dcrdex/client/asset/btc"
 	_ "decred.org/dcrdex/client/asset/dcr"
 	"decred.org/dcrdex/dex"
+	"decred.org/dcrdex/dex/encode"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type walletMatcher struct {
@@ -24,9 +28,9 @@ type command interface {
 }
 
 var (
-	flagset        = flag.NewFlagSet("", flag.ExitOnError)
-	confFlag       = flagset.String("conf", "demo/config.json", "path to wallet connection config file")
-	testnetFlag    = flagset.Bool("testnet", false, "use testnet network")
+	flagset     = flag.NewFlagSet("", flag.ExitOnError)
+	confFlag    = flagset.String("conf", "demo/config.json", "path to wallet connection config file")
+	testnetFlag = flagset.Bool("testnet", false, "use testnet network")
 )
 
 func init() {
@@ -34,7 +38,7 @@ func init() {
 		fmt.Println("Usage: simpleswap [flags] cmd [cmd args]")
 		fmt.Println()
 		fmt.Println("Commands:")
-		fmt.Println("  initiate <participant address> <amount>")
+		fmt.Println("  initiate <coin type: btc or dcr> <amount>")
 		fmt.Println("  participate <initiator address> <amount> <secret hash>")
 		fmt.Println("  redeem <contract> <contract transaction> <secret>")
 		fmt.Println("  refund <contract> <contract transaction>")
@@ -99,10 +103,16 @@ func _main() (error, bool) {
 	}
 
 	var cmd command
-	switch
-	args[0]{
+	switch args[0] {
 	case "initiate":
-		cmd = &initiateCmd{}
+		amount, err := strconv.ParseFloat(args[2], 64)
+		if err != nil {
+			return fmt.Errorf("Amount must be number: ", err), false
+		}
+		cmd = &initiateCmd{
+			coin:   args[1],
+			amount: amount,
+		}
 	}
 	err = cmd.runCommand(context.Background(), wm)
 	return err, false
@@ -121,7 +131,7 @@ func checkCmdArgLength(args []string, required int) (nArgs int) {
 }
 
 func initWallet(confFilePath string) (*walletMatcher, error) {
-	data,err := ioutil.ReadFile(confFilePath)
+	data, err := ioutil.ReadFile(confFilePath)
 	if err != nil {
 		return nil, err
 	}
@@ -130,13 +140,13 @@ func initWallet(confFilePath string) (*walletMatcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	btcSetting,ok := confInfo["btc"]
+	btcSetting, ok := confInfo["btc"]
 	if !ok {
 		return nil, fmt.Errorf("Configure for btc wallet is required")
 	}
 	// setup btc wallet
 	btcConf := asset.WalletConfig{
-		Settings:  btcSetting,
+		Settings: btcSetting,
 		TipChange: func(e error) {
 
 		},
@@ -145,20 +155,20 @@ func initWallet(confFilePath string) (*walletMatcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	_,err = btcWallet.Connect(context.Background())
+	_, err = btcWallet.Connect(context.Background())
 	if err != nil {
 		return nil, err
 	}
 	if err = btcWallet.Unlock(btcSetting["walletpassphrase"]); err != nil {
 		return nil, err
 	}
-	dcrSetting,ok := confInfo["dcr"]
+	dcrSetting, ok := confInfo["dcr"]
 	if !ok {
 		return nil, fmt.Errorf("Configure for btc wallet is required")
 	}
 	// setup dcr wallet
 	dcrConf := asset.WalletConfig{
-		Settings:  dcrSetting,
+		Settings: dcrSetting,
 		TipChange: func(e error) {
 
 		},
@@ -167,7 +177,7 @@ func initWallet(confFilePath string) (*walletMatcher, error) {
 	if err != nil {
 		return nil, err
 	}
-	_,err = dcrWallet.Connect(context.Background())
+	_, err = dcrWallet.Connect(context.Background())
 	if err != nil {
 		return nil, err
 	}
@@ -181,9 +191,59 @@ func initWallet(confFilePath string) (*walletMatcher, error) {
 }
 
 type initiateCmd struct {
-
+	coin   string
+	amount float64
 }
 
-func (c *initiateCmd) runCommand(ctx context.Context,wm *walletMatcher) error  {
+func (c *initiateCmd) runCommand(ctx context.Context, wm *walletMatcher) error {
+	var fromWallet, toWallet asset.Wallet
+	switch c.coin {
+	case "btc":
+		fromWallet = wm.btcWallet
+		toWallet = wm.dcrWallet
+	case "dcr":
+		fromWallet = wm.dcrWallet
+		toWallet = wm.btcWallet
+	default:
+		return fmt.Errorf("Unsupported coin")
+	}
+	fmt.Sprintf("%v",toWallet)
+	dexAsset := dex.Asset{
+		ID:           0,
+		Symbol:       c.coin,
+		LotSize:      100000000,
+		RateStep:     100000000,
+		MaxFeeRate:   10,
+		SwapSize:     0,
+		SwapSizeBase: 0,
+		SwapConf:     4,
+	}
+	qty := uint64(c.amount * 1e8)
+	order := asset.Order{
+		Value:        qty,
+		MaxSwapCount: qty / dexAsset.LotSize,
+		DEXConfig:    &dexAsset,
+		Immediate:    true,
+	}
+	coins, redeemScript, err := fromWallet.FundOrder(&order)
+	fmt.Println(coins, redeemScript, err)
+	//err = fromWallet.ReturnCoins(coins)
+	secret := encode.RandomBytes(32)
+	secretHash := sha256.Sum256(secret)
+	contract := asset.Contract{
+		Address:    "",
+		Value:      0,
+		SecretHash: secretHash[:],
+		LockTime:   uint64(time.Now().Add(time.Hour * 24).UTC().Unix()),
+	}
+	swap := asset.Swaps{
+		Inputs:     coins,
+		Contracts:  []*asset.Contract{&contract},
+		FeeRate:    0,
+		LockChange: false,
+	}
+	receipts,changeCoin, feePaid, err := fromWallet.Swap(&swap)
+	// fromWallet.FindRedemption()
+	fmt.Println(receipts,changeCoin, feePaid, err)
 	return nil
 }
