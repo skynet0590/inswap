@@ -1,21 +1,52 @@
 {
-  "btc": {
-    "walletname": "default",
-    "fallbackfee": "0.001",
-    "rpcbind": "127.0.0.1",
-    "rpcport": "18332",
-    "rpcuser": "rpcuser",
-    "rpcpassword": "rpcpassword",
-    "txsplit": "0",
-    "walletpassphrase": "passphrase"
+  "party1": {
+    "btc": {
+      "config": {
+        "walletname": "test1",
+        "fallbackfee": "0.001",
+        "rpcbind": "127.0.0.1",
+        "rpcport": "18332",
+        "rpcuser": "rpcuser",
+        "rpcpassword": "rpcpassword",
+        "txsplit": "0"
+      },
+      "passphrase": ""
+    },
+    "dcr": {
+      "config": {
+        "account": "test1",
+        "fallbackfee": "0.0002",
+        "rpclisten": "127.0.0.1:19110",
+        "username": "rpcuser",
+        "password": "rpcpassword",
+        "rpccert": ""
+      },
+      "passphrase": "vietanh123"
+    }
   },
-  "dcr": {
-    "account": "default",
-    "fallbackfee": "0.0002",
-    "rpclisten": "127.0.0.1:19110",
-    "username": "username",
-    "password": "password",
-    "rpccert": "path/to/dcrwallet/certfile",
-    "walletpassphrase": "passphrase"
+  "party2": {
+    "btc": {
+      "config": {
+        "walletname": "test2",
+        "fallbackfee": "0.001",
+        "rpcbind": "127.0.0.1",
+        "rpcport": "18332",
+        "rpcuser": "rpcuser",
+        "rpcpassword": "rpcpassword",
+        "txsplit": "0"
+      },
+      "passphrase": ""
+    },
+    "dcr": {
+      "config": {
+        "account": "test2",
+        "fallbackfee": "0.0002",
+        "rpclisten": "127.0.0.1:19110",
+        "username": "rpcusername",
+        "password": "rpcpassword",
+        "rpccert": ""
+      },
+      "passphrase": "passphrase"
+    }
   }
 }
